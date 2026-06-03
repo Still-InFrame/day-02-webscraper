@@ -4,7 +4,7 @@ Drop in a URL, get a single Markdown file containing the site's main pages — d
 
 ![Site → Markdown](day-02-webscraper.png)
 
-Day 02 of the [100 Day AI Build Challenge](https://100dayaichallenge.com) — one new app every day for 100 days.
+Day 02 of the [100 Day AI Build Challenge](https://www.100dayaichallenge.com/share/savion) — one new app every day for 100 days.
 
 ## What it does
 
