@@ -6,10 +6,11 @@ Session-continuity doc. Auto-loaded as project instructions at session start. Re
 
 Day 02 of Savion's 100 Day AI Build Challenge (one new app per day for 100 days). Single user (Savion).
 
-- **webscraper** — _one-line description (fill in)._
-- Stack: Next.js + TypeScript + Tailwind (App Router)
-- Dev / build / test commands: _(fill in once the stack is set up)_
-- Scaffolded: 2026-06-02
+- **webscraper** — Drop in a URL, Playwright crawls up to 15 pages (depth 2) like a real visitor, outputs a single LLM-ready Markdown audit file. Made for marketers feeding sites into an LLM for SEO / messaging audits.
+- Stack: Next.js + TypeScript + Tailwind (App Router) + Playwright + @mozilla/readability + Turndown + zod.
+- Dev: `npm run dev` then visit `http://localhost:3000`. On a fresh checkout also run `npx playwright install chromium` once.
+- Build: `npm run build`. Test: manual smoke via the UI — no automated tests for v1.
+- Scaffolded: 2026-06-02. Shipped v1: 2026-06-02.
 
 ## Challenge context (constant across all 100 days)
 
@@ -51,7 +52,7 @@ Read every session. Propose updates to this file when ANY fire — don't wait to
 ## Project status
 
 ### In flight
-(none yet)
+(none)
 
 ### Blocked
 (none)
@@ -60,13 +61,14 @@ Read every session. Propose updates to this file when ANY fire — don't wait to
 (none)
 
 ### Recently shipped
-(none yet)
+- **v1 scraper** (2026-06-02): URL form → Playwright crawl (BFS depth 2, 15-page cap, sitemap fallback) → Readability + Turndown → single `scrapes/[hostname].md` → "Open in Finder" button. Smoke-tested against example.com (1 page, 5s) and anthropic.com (15 pages, 2min).
 
 ## Changelog
 
 Format — date, title, root cause/motivation, plumbing (files), tradeoffs. Reading cold, future-me must understand WHY.
 
 - **2026-06-02**: Project scaffolded from the 100-day starter template.
+- **2026-06-02**: v1 scraper shipped — URL form → Playwright crawl (depth 2, 15-page cap, BFS-first with sitemap fallback) → Readability + Turndown → concatenated `[hostname].md` written to `scrapes/`, revealed in Finder. Built for marketers feeding the file into an LLM for site audits. Tradeoffs chosen: Playwright over fetch+cheerio (slower but renders SPAs like a real visitor); serial crawl over parallel (~8s/page, simpler); BFS-from-homepage over sitemap-first (a visitor's path is more audit-relevant than a sitemap dump, which often lists hundreds of legacy URLs). Sitemap is only used when the homepage exposes zero internal links.
 
 ## Open threads
 
@@ -83,10 +85,16 @@ Pre-seeded machine/environment lessons (true on this Mac regardless of app). Add
 
 ## Architecture
 
-_(document routing/state/data-flow/module boundaries once they exist)_
+UI (`app/page.tsx`, client) POSTs URL → `app/api/scrape/route.ts` (Node runtime) launches Chromium once, hands it to `lib/crawler.ts`. The crawler runs BFS from the homepage (same-origin links only, depth 2, 15 pages); for each URL it calls `lib/scraper.ts` which `page.goto`s with DOMContentLoaded + best-effort networkidle, extracts title/meta/H1 in the page context, runs the rendered HTML through Readability (via JSDOM) and Turndown. Pages aggregate into a `ScrapeResult`, `lib/markdown.ts` assembles the final file with a per-page header block, route writes to `scrapes/[hostname].md` and returns the absolute path. UI's "Open in Finder" button POSTs that path to `app/api/open/route.ts`, which validates it lives under `scrapes/` and shells out to `open -R`.
 
 ## Key files
 
 | Purpose | File |
 |---|---|
-| _(fill in as the app takes shape)_ | |
+| Form UI (URL input, status, "Open in Finder") | `app/page.tsx` |
+| Orchestrates scrape: launch Chromium → crawl → write MD | `app/api/scrape/route.ts` |
+| Reveals the output MD in Finder via `open -R` | `app/api/open/route.ts` |
+| BFS crawler (depth 2, 15-cap, sitemap fallback) | `lib/crawler.ts` |
+| Per-page Playwright load + Readability + Turndown | `lib/scraper.ts` |
+| Assembles final concatenated Markdown with per-page header block | `lib/markdown.ts` |
+| Shared `ScrapedPage` / `ScrapeResult` types | `lib/types.ts` |
